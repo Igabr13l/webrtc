@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Llamada con WebRTC</title>
+
+  <style>
+    #click2call a:hover {
+      opacity: 0.5;
+    }
+
+    #click2call_callbtn img {
+      height: 200px;
+    }
+
+    #click2call_hupbtn img {
+      height: 150px;
+    }
+
+    #click2call_msgdiv {
+      font-size: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Hacer una llamada</h1>
+
+  <div id="click2call" align="center">
+    <a id="click2call_callbtn">
+      <img src="https://webrtc.anura.com.ar/click2call/img/click2call.png">
+    </a>
+
+    <a id="click2call_hupbtn">
+      <img src="https://webrtc.anura.com.ar/click2call/img/phone_hang.png">
+    </a>
+    <div id="click2call_msgdiv"></div>
+
+    <div style="visibility: hidden; display: none;">
+      <input id="click2call_user" value="666">
+      <input id="click2call_domain" value="mozoapp.grancentral.com.ar">
+      <input id="click2call_password" value="666@0313">
+      <input id="click2call_number" value="102">
+      <input id="click2call_host" value="wss://webrtc.anura.com.ar:9084">
+    </div>
+
+    <div id="media" style="visibility: hidden; display: none;">
+      <video width=800 id="webcam" autoplay="autoplay" hidden="true"> </video>
+    </div>
+  </div>
+
+  <script type="text/javascript" src="./js/jquery-2.1.1.min.js"></script>
+  <script type="text/javascript" src="./js/jquery.json-2.4.min.js"></script>
+  <script type="text/javascript" src="./js/jquery.cookie.js"></script>
+  <script type="text/javascript" src="./js/verto-min.js"></script>
+  <script type="text/javascript" src="./js/click2call.js"></script>
+</body>
+
+</html>
