@@ -170,7 +170,7 @@
         passwd: strPassword,
         socketUrl: strHost,
         tag: "webcam",
-        iceServers: false // stun
+        iceServers: false
       }, callbacks);
 
     }
