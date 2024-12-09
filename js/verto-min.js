@@ -20,9 +20,7 @@
     this.videoEnabled = true;
     this.mediaData = { SDP: null, profile: {}, candidateList: [] };
     this.constraints = { offerToReceiveAudio: this.options.useSpeak === "none" ? false : true, offerToReceiveVideo: this.options.useVideo ? true : false };
-    if (self.options.useVideo) {
-      self.options.useVideo.style.display = "none";
-    }
+
   };
 
   function onICESDP(self, sdp) {
@@ -34,14 +32,11 @@
     var element = self.options.useAudio;
     if (typeof element.srcObject !== "undefined") {
       element.srcObject = stream;
-    } else {
-      console.error("Error attaching stream to element.");
     }
-    self.remoteStream = stream;
   }
 
-  $.FSRTC.prototype.answer = function (sdp, onSuccess, onError) {
-    this.peer.addAnswerSDP({ type: "answer", sdp: sdp }, onSuccess, onError);
+  $.FSRTC.prototype.answer = function (sdp) {
+    this.peer.addAnswerSDP({ type: "answer", sdp: sdp });
   };
 
   function getMediaParams(obj) {
@@ -102,10 +97,6 @@
       gathering = null;
       if (options.type == "offer") {
         options.onICESDP(peer.localDescription);
-      } else {
-        if (!x && options.onICESDP) {
-          options.onICESDP(peer.localDescription);
-        }
       }
     }
     peer.onicecandidate = function (event) {
@@ -115,30 +106,23 @@
       if (!gathering) {
         gathering = setTimeout(ice_handler, 1000);
       }
-      if (event) {
-      } else {
-        done = true;
-        if (gathering) {
-          clearTimeout(gathering);
-          gathering = null;
-        }
-        ice_handler();
+      done = true;
+      if (gathering) {
+        clearTimeout(gathering);
+        gathering = null;
       }
+      ice_handler();
     };
-    if (options.attachStream) peer.addStream(options.attachStream);
-    if (options.attachStreams && options.attachStream.length) {
-      var streams = options.attachStreams;
-      for (var i = 0; i < streams.length; i++) {
-        peer.addStream(streams[i]);
-      }
+    if (options.attachStream) {
+      const stream = options.attachStream;
+      stream.getTracks().forEach((track) => {
+        peer.addTrack(track, stream);
+      });
     }
-    peer.onaddstream = function (event) {
-      var remoteMediaStream = event.stream;
-      remoteMediaStream.oninactive = function () {
-        if (options.onRemoteStreamEnded) options.onRemoteStreamEnded(remoteMediaStream);
-      };
-      if (options.onRemoteStream) options.onRemoteStream(remoteMediaStream);
-    };
+
+    peer.ontrack = function (event) {
+      if (options.onRemoteStream) options.onRemoteStream(event.streams[0]);
+    }
 
     if (options.onChannelMessage || !options.onChannelMessage) {
       const offer = peer.createOffer();
@@ -147,7 +131,7 @@
     var channel;
 
     return {
-      addAnswerSDP: function (sdp, cbSuccess, cbError) {
+      addAnswerSDP: function (sdp) {
         const answer = new window.RTCSessionDescription(sdp);
         peer.setRemoteDescription(answer);
       },
@@ -187,6 +171,7 @@
     return media;
   }
 })(jQuery);
+
 (function ($) {
   $.JsonRpcClient = function (options) {
     var self = this;
@@ -335,14 +320,6 @@
     if (event.data[0] == "#" && event.data[1] == "S" && event.data[2] == "P") {
       if (event.data[3] == "U") {
         this.up_dur = parseInt(event.data.substring(4));
-      } else if (this.speedCB && event.data[3] == "D") {
-        this.down_dur = parseInt(event.data.substring(4));
-        var up_kps = ((this.speedBytes * 8) / (this.up_dur / 1000) / 1024).toFixed(0);
-        var down_kps = ((this.speedBytes * 8) / (this.down_dur / 1000) / 1024).toFixed(0);
-        console.info("Speed Test: Up: " + up_kps + " Down: " + down_kps);
-        var cb = this.speedCB;
-        this.speedCB = null;
-        cb(event, { upDur: this.up_dur, downDur: this.down_dur, upKPS: up_kps, downKPS: down_kps });
       }
       return;
     }
@@ -382,13 +359,8 @@
                     self.options.onWSLogin(true, self);
                   }
                 },
-              function (e) {
-                console.log("error logging in, request id:", response.id);
-                delete self._ws_callbacks[response.id];
-                error_cb(response.error, this);
-                if (self.options.onWSLogin) {
-                  self.options.onWSLogin(false, self);
-                }
+              () => {
+                console.error("Error logging in");
               }
             );
             return;
@@ -404,17 +376,7 @@
     }
     if (typeof this.options.onmessage === "function") {
       event.eventData = response;
-      if (!event.eventData) {
-        event.eventData = {};
-      }
-      var reply = this.options.onmessage(event);
-      if (reply && typeof reply === "object" && event.eventData.id) {
-        var msg = { jsonrpc: "2.0", id: event.eventData.id, result: reply };
-        var socket = self.options.getSocket(self.wsOnMessage);
-        if (socket !== null) {
-          socket.send($.toJSON(msg));
-        }
-      }
+      this.options.onmessage(event);
     }
   };
 })(jQuery);
@@ -493,7 +455,7 @@
         return verto.handleMessage(e.eventData);
       },
       onWSConnect: function (o) {
-        o.call("login", {});
+
       },
       onWSLogin: function (success) {
         if (verto.callbacks.onWSLogin) {
@@ -681,19 +643,7 @@
   $.verto.dialog.prototype.handleMedia = function (params) {
     var dialog = this;
     dialog.gotEarly = true;
-    dialog.rtc.answer(
-      params.sdp,
-      function () {
-        console.log("Dialog " + dialog.callID + "Establishing early media");
-        if (dialog.gotAnswer) {
-          console.log("Dialog " + dialog.callID + "Answering Channel");
-        }
-      },
-      function (e) {
-        console.error(e);
-        dialog.hangup();
-      }
-    );
+    dialog.rtc.answer(params.sdp);
     console.log("Dialog " + dialog.callID + "EARLY SDP", params.sdp);
   };
   $.verto.ENUM = function (s) {
