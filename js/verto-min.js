@@ -18,7 +18,7 @@
     );
     this.audioEnabled = true;
     this.videoEnabled = true;
-    this.mediaData = { SDP: null, profile: {}, candidateList: [] };
+    this.mediaData = { SDP: null };
     this.constraints = { offerToReceiveAudio: this.options.useSpeak === "none" ? false : true, offerToReceiveVideo: this.options.useVideo ? true : false };
 
   };
@@ -51,20 +51,11 @@
     return { audio: audio, video: false, useVideo: false };
   }
 
-  $.FSRTC.prototype.call = function (profile) {
+  $.FSRTC.prototype.call = function () {
     var self = this;
-    var screen = false;
     self.type = "offer";
-    if (self.options.videoParams && self.options.screenShare) {
-      screen = true;
-    }
     function onSuccess(stream) {
       self.localStream = stream;
-      if (screen) {
-        self.constraints.offerToReceiveVideo = false;
-        self.constraints.offerToReceiveAudio = false;
-        self.constraints.offerToSendAudio = false;
-      }
       self.peer = FSRTCPeerConnection({
         type: self.type,
         attachStream: self.localStream,
@@ -85,13 +76,11 @@
 
   function FSRTCPeerConnection(options) {
     var gathering = false;
-    var done = false;
 
     var peer = new window.RTCPeerConnection({
       bundlePolicy: "max-compat",
     });
 
-    var x = 0;
     function ice_handler() {
       done = true;
       gathering = null;
@@ -139,8 +128,6 @@
         if (options.attachStream) {
           if (typeof options.attachStream.stop == "function") {
             options.attachStream.stop();
-          } else {
-            options.attachStream.active = false;
           }
         }
       },
@@ -550,9 +537,6 @@
       if (dialog.params.display_direction === "outbound") {
         dialog.params.remote_caller_id_name = dialog.params.caller_id_name;
         dialog.params.remote_caller_id_number = dialog.params.caller_id_number;
-      } else {
-        dialog.params.remote_caller_id_name = dialog.params.callee_id_name;
-        dialog.params.remote_caller_id_number = dialog.params.callee_id_number;
       }
       if (!dialog.params.remote_caller_id_name) {
         dialog.params.remote_caller_id_name = "Nobody";
@@ -574,11 +558,7 @@
         return;
       }
       if (rtc.type == "offer") {
-        if (dialog.state == $.verto.enum.state.active) {
-          dialog.sendMethod("verto.attach", { sdp: rtc.mediaData.SDP });
-        } else {
-          dialog.sendMethod("verto.invite", { sdp: rtc.mediaData.SDP });
-        }
+        dialog.sendMethod("verto.invite", { sdp: rtc.mediaData.SDP });
       }
     };
 
@@ -675,30 +655,8 @@
   $.verto.unloadJobs = [];
 
   $.verto.init = function (obj, runtime) {
-    if (!obj) {
-      obj = {};
-    }
-    if (!obj.skipPermCheck && !obj.skipDeviceCheck) {
-      $.FSRTC.checkPerms(
-        function (status) {
-          checkDevices(runtime);
-        },
-        true,
-        true
-      );
-    } else if (obj.skipPermCheck && !obj.skipDeviceCheck) {
-      checkDevices(runtime);
-    } else if (!obj.skipPermCheck && obj.skipDeviceCheck) {
-      $.FSRTC.checkPerms(
-        function (status) {
-          runtime(status);
-        },
-        true,
-        true
-      );
-    } else {
-      runtime(null);
-    }
+
+
   };
 
 })(jQuery);
