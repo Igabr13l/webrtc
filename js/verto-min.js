@@ -65,12 +65,7 @@
   $.FSRTC.prototype.answer = function (sdp, onSuccess, onError) {
     this.peer.addAnswerSDP({ type: "answer", sdp: sdp }, onSuccess, onError);
   };
-  $.FSRTC.prototype.stopPeer = function () {
 
-  };
-  $.FSRTC.prototype.stop = function () {
-
-  };
   function getMediaParams(obj) {
     var audio;
     if (obj.options.useMic && obj.options.useMic === "none") {
@@ -619,28 +614,6 @@
       }
     }
   };
-  $.JsonRpcClient._batchObject = function (jsonrpcclient, all_done_cb, error_cb) {
-
-  };
-  $.JsonRpcClient._batchObject.prototype.call = function (method, params, success_cb, error_cb) {
-    if (!params) {
-      params = {};
-    }
-    if (this.options.sessid) {
-      params.sessid = this.options.sessid;
-    }
-    if (!success_cb) {
-      success_cb = function (e) {
-        console.log("Success: ", e);
-      };
-    }
-    if (!error_cb) {
-      error_cb = function (e) {
-        console.log("Error: ", e);
-      };
-    }
-    this._requests.push({ request: { jsonrpc: "2.0", method: method, params: params, id: this.jsonrpcclient._current_id++ }, success_cb: success_cb, error_cb: error_cb });
-  };
 })(jQuery);
 (function ($) {
   var generateGUID =
@@ -740,34 +713,6 @@
     }
     verto.rpcClient.call("login", {});
   };
-  $.verto.prototype.loginData = function (params) {
-
-  };
-  $.verto.prototype.logout = function (msg) {
-
-  };
-  $.verto.prototype.login = function (msg) {
-
-  };
-  $.verto.prototype.message = function (msg) {
-
-  };
-  $.verto.prototype.processReply = function (method, success, e) {
-
-  };
-  $.verto.prototype.sendMethod = function (method, params) {
-
-  };
-
-  $.verto.prototype.broadcast = function (channel, params) {
-
-  };
-  $.verto.prototype.purge = function (callID) {
-
-  };
-  $.verto.prototype.hangup = function (callID) {
-
-  };
   $.verto.prototype.newCall = function (args, callbacks) {
     var verto = this;
 
@@ -790,32 +735,6 @@
     }
   };
 
-  $.verto.conf = function (verto, params) {
-  };
-  $.verto.conf.prototype.destroy = function () {
-
-  };
-
-  $.verto.modfuncs = {};
-  $.verto.confMan = function (verto, params) { };
-  $.verto.confMan.prototype.modCommand = function (cmd, id, value) {
-  };
-  $.verto.confMan.prototype.sendChat = function (message, type) {
-  };
-  $.verto.confMan.prototype.destroy = function () {
-    var confMan = this;
-    confMan.destroyed = true;
-    if (confMan.lt) {
-      confMan.lt.destroy();
-    }
-    if (confMan.params.laData.chatChannel) {
-    }
-    if (confMan.params.laData.modChannel) {
-    }
-    if (confMan.params.mainModID) {
-      $(confMan.params.mainModID).html("");
-    }
-  };
   $.verto.dialog = function (direction, verto, params) {
     var dialog = this;
     dialog.params = $.extend(
@@ -973,11 +892,6 @@
         dialog.processReply(method, false, e);
       }
     );
-  };
-
-  $.verto.dialog.prototype.processReply = function (method, success, e) {
-  };
-  $.verto.dialog.prototype.hangup = function (params) {
   };
 
   $.verto.dialog.prototype.handleMedia = function (params) {
