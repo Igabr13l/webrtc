@@ -141,14 +141,12 @@
     return { audio: audio, video: false, useVideo: false };
   }
   $.FSRTC.prototype.call = function (profile) {
-
     var self = this;
     var screen = false;
     self.type = "offer";
     if (self.options.videoParams && self.options.screenShare) {
       screen = true;
     }
-
     function onSuccess(stream) {
       self.localStream = stream;
       if (screen) {
@@ -164,7 +162,6 @@
         onICESDP: function (sdp) {
           return onICESDP(self, sdp);
         },
-
         constraints: self.constraints,
         iceServers: self.options.iceServers,
         turnServer: self.options.turnServer,
@@ -287,99 +284,8 @@
     }
     return media;
   }
-  $.FSRTC.bestResSupported = function () {
-    var w = 0,
-      h = 0;
-    for (var i in $.FSRTC.validRes) {
-      if ($.FSRTC.validRes[i][0] >= w && $.FSRTC.validRes[i][1] >= h) {
-        w = $.FSRTC.validRes[i][0];
-        h = $.FSRTC.validRes[i][1];
-      }
-    }
-    return [w, h];
-  };
-  var resList = [
-    [160, 120],
-    [320, 180],
-    [320, 240],
-    [640, 360],
-    [640, 480],
-    [1280, 720],
-    [1920, 1080],
-  ];
-  var resI = 0;
-  var ttl = 0;
-  var checkRes = function (cam, func) {
-    if (resI >= resList.length) {
-      var res = { validRes: $.FSRTC.validRes, bestResSupported: $.FSRTC.bestResSupported() };
-      localStorage.setItem("res_" + cam, $.toJSON(res));
-      if (func) return func(res);
-      return;
-    }
-    w = resList[resI][0];
-    h = resList[resI][1];
-    resI++;
-    var video = { width: { exact: w }, height: { exact: h } };
-    if (cam !== "any") {
-      video.deviceId = { exact: cam };
-    }
-    getUserMedia({
-      constraints: { audio: ttl++ == 0, video: video },
-      onsuccess: function (e) {
-        e.getTracks().forEach(function (track) {
-          track.stop();
-        });
-        console.info(w + "x" + h + " supported.");
-        $.FSRTC.validRes.push([w, h]);
-        checkRes(cam, func);
-      },
-      onerror: function (e) {
-        console.warn(w + "x" + h + " not supported.");
-        checkRes(cam, func);
-      },
-    });
-  };
-  $.FSRTC.getValidRes = function (cam, func) {
-    var used = [];
-    var cached = localStorage.getItem("res_" + cam);
-    if (cached) {
-      var cache = $.parseJSON(cached);
-      if (cache) {
-        $.FSRTC.validRes = cache.validRes;
-        console.log("CACHED RES FOR CAM " + cam, cache);
-      } else {
-        console.error("INVALID CACHE");
-      }
-      return func ? func(cache) : null;
-    }
-    $.FSRTC.validRes = [];
-    resI = 0;
-    checkRes(cam, func);
-  };
-  $.FSRTC.checkPerms = function (runtime, check_audio, check_video) {
-    getUserMedia({
-      constraints: { audio: check_audio, video: check_video },
-      onsuccess: function (e) {
-        e.getTracks().forEach(function (track) {
-          track.stop();
-        });
-        console.info("media perm init complete");
-        if (runtime) {
-          setTimeout(runtime, 100, true);
-        }
-      },
-      onerror: function (e) {
-        if (check_video && check_audio) {
-          console.error("error, retesting with audio params only");
-          return $.FSRTC.checkPerms(runtime, check_audio, false);
-        }
-        console.error("media perm init error");
-        if (runtime) {
-          runtime(false);
-        }
-      },
-    });
-  };
+
+
 })(jQuery);
 (function ($) {
   $.JsonRpcClient = function (options) {
@@ -804,9 +710,6 @@
       RTCcallbacks.onAnswerSDP = function (rtc, sdp) {
         console.error("answer sdp", sdp);
       };
-    } else {
-      dialog.params.remote_caller_id_name = "Outbound Call";
-      dialog.params.remote_caller_id_number = dialog.params.destination_number;
     }
     RTCcallbacks.onICESDP = function (rtc) {
       console.log("RECV " + rtc.type + " SDP", rtc.mediaData.SDP);
@@ -838,13 +741,7 @@
       console.log("remote stream started");
     };
     RTCcallbacks.onError = function (e) {
-      if (dialog.callbacks.permissionCallback && typeof dialog.callbacks.permissionCallback.onDenied === "function") {
-        dialog.callbacks.permissionCallback.onDenied();
-      } else if (dialog.verto.options.permissionCallback && typeof dialog.verto.options.permissionCallback.onDenied === "function") {
-        dialog.verto.options.permissionCallback.onDenied();
-      }
-      console.error("ERROR:", e);
-      dialog.hangup({ cause: "Device or Permission Error" });
+
     };
     dialog.rtc = new $.FSRTC({
       callbacks: RTCcallbacks,
@@ -896,7 +793,6 @@
 
   $.verto.dialog.prototype.handleMedia = function (params) {
     var dialog = this;
-
     dialog.gotEarly = true;
     dialog.rtc.answer(
       params.sdp,
