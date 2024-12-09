@@ -753,7 +753,5 @@
       runtime(null);
     }
   };
-  $.verto.genUUID = function () {
-    return generateGUID();
-  };
+
 })(jQuery);
