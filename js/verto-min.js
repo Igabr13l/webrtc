@@ -99,10 +99,7 @@
         options.onICESDP(peer.localDescription);
       }
     }
-    peer.onicecandidate = function (event) {
-      if (done) {
-        return;
-      }
+    peer.onicecandidate = function () {
       if (!gathering) {
         gathering = setTimeout(ice_handler, 1000);
       }
@@ -135,7 +132,7 @@
         const answer = new window.RTCSessionDescription(sdp);
         peer.setRemoteDescription(answer);
       },
-      peer: peer,
+      peer,
       channel: channel,
       stop: function () {
         peer.close();
