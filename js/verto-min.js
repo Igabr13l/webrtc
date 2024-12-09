@@ -23,42 +23,20 @@
     if (self.options.useVideo) {
       self.options.useVideo.style.display = "none";
     }
-
   };
-  $.FSRTC.validRes = [];
-  function doCallback(self, func, arg) {
-    if (func in self.options.callbacks) {
-      self.options.callbacks[func](self, arg);
-    }
-  }
 
   function onICESDP(self, sdp) {
-    //TODO: aca se agrega el SDP al mediaData
-    self.mediaData.SDP = sdp.sdp
-    console.log("ICE SDP");
-    doCallback(self, "onICESDP");
+    self.mediaData.SDP = sdp.sdp;
+    self.options.callbacks["onICESDP"](self);
   }
-  FSRTCattachMediaStream = function (element, stream) {
+
+  function onRemoteStream(self, stream) {
+    var element = self.options.useAudio;
     if (typeof element.srcObject !== "undefined") {
-      //TODO: aca se agrega el stream al elemento
       element.srcObject = stream;
     } else {
       console.error("Error attaching stream to element.");
     }
-  };
-  function onRemoteStream(self, stream) {
-    if (self.options.useVideo) {
-      self.options.useVideo.style.display = "block";
-      var iOS = ["iPad", "iPhone", "iPod"].indexOf(navigator.platform) >= 0;
-      if (iOS) {
-        self.options.useVideo.setAttribute("playsinline", true);
-      }
-    }
-    var element = self.options.useAudio;
-    console.log("REMOTE STREAM", stream, element);
-    FSRTCattachMediaStream(element, stream);
-    var iOS = ["iPad", "iPhone", "iPod"].indexOf(navigator.platform) >= 0;
-
     self.remoteStream = stream;
   }
 
@@ -68,78 +46,16 @@
 
   function getMediaParams(obj) {
     var audio;
-    if (obj.options.useMic && obj.options.useMic === "none") {
-      console.log("Microphone Disabled");
-      audio = false;
-    } else if (obj.options.videoParams && obj.options.screenShare) {
-      console.error("SCREEN SHARE", obj.options.videoParams);
-      audio = false;
-    } else {
-      audio = {};
-      if (obj.options.audioParams) {
-        audio = obj.options.audioParams;
-      }
-      if (obj.options.useMic !== "any") {
-        audio.deviceId = { exact: obj.options.useMic };
-      }
+    audio = {};
+    if (obj.options.audioParams) {
+      audio = obj.options.audioParams;
     }
-    if (obj.options.useVideo && obj.options.localVideo && !obj.options.useStream) {
-      getUserMedia({
-        constraints: { audio: false, video: { deviceId: obj.options.useCamera } },
-        localVideo: obj.options.localVideo,
-        onsuccess: function (e) {
-          obj.options.localVideoStream = e;
-          console.log("local video ready");
-        },
-        onerror: function (e) {
-          console.error("local video error!");
-        },
-      });
-    }
-    var video = {};
-    var bestFrameRate = obj.options.videoParams.vertoBestFrameRate;
-    var minFrameRate = obj.options.videoParams.minFrameRate || 15;
-    delete obj.options.videoParams.vertoBestFrameRate;
-    if (obj.options.screenShare) {
-      if (!obj.options.useCamera && !!navigator.mozGetUserMedia) {
-        var dowin = window.confirm("Do you want to share an application window?  If not you can share an entire screen.");
-        video = {
-          width: { min: obj.options.videoParams.minWidth, max: obj.options.videoParams.maxWidth },
-          height: { min: obj.options.videoParams.minHeight, max: obj.options.videoParams.maxHeight },
-          mediaSource: dowin ? "window" : "screen",
-        };
-      } else {
-        var opt = [];
-        if (obj.options.useCamera) {
-          opt.push({ sourceId: obj.options.useCamera });
-        }
-        if (bestFrameRate) {
-          opt.push({ minFrameRate: bestFrameRate });
-          opt.push({ maxFrameRate: bestFrameRate });
-        }
-        video = { mandatory: obj.options.videoParams, optional: opt };
-        if (!!navigator.userAgent.match(/Android/i)) {
-          delete video.frameRate.min;
-        }
-      }
-    } else {
-      video = { width: { min: obj.options.videoParams.minWidth, max: obj.options.videoParams.maxWidth }, height: { min: obj.options.videoParams.minHeight, max: obj.options.videoParams.maxHeight } };
-      var useVideo = obj.options.useVideo;
-      if (useVideo && obj.options.useCamera && obj.options.useCamera !== "none") {
-        if (obj.options.useCamera !== "any") {
-          video.deviceId = { exact: obj.options.useCamera };
-        }
-        if (bestFrameRate) {
-          video.frameRate = { ideal: bestFrameRate, min: minFrameRate, max: 30 };
-        }
-      } else {
-        console.log("Camera Disabled");
-        video = false;
-        useVideo = false;
-      }
+    if (obj.options.useMic !== "any") {
+      audio.deviceId = { exact: obj.options.useMic };
     }
     return { audio: audio, video: false, useVideo: false };
   }
+
   $.FSRTC.prototype.call = function (profile) {
     var self = this;
     var screen = false;
@@ -157,7 +73,6 @@
       self.peer = FSRTCPeerConnection({
         type: self.type,
         attachStream: self.localStream,
-        //TODO: aca se agrega el stream al elemento
         onRemoteStream: (stream) => onRemoteStream(self, stream),
         onICESDP: function (sdp) {
           return onICESDP(self, sdp);
@@ -167,26 +82,15 @@
         turnServer: self.options.turnServer,
       });
     }
-    function onError(e) {
-    }
     var mediaParams = getMediaParams(self);
-    console.log("Audio constraints", mediaParams.audio);
-    console.log("Video constraints", mediaParams.video);
-    if (self.options.useStream) {
-      if (self.options.useVideo) {
-        self.options.localVideoStream = self.options.useStream;
-
-      }
-      onSuccess(self.options.useStream);
-    } else if (mediaParams.audio || mediaParams.video) {
-      getUserMedia({ constraints: { audio: mediaParams.audio, video: mediaParams.video }, video: mediaParams.useVideo, onsuccess: onSuccess, onerror: onError });
-    } else {
-      onSuccess(null);
+    if (mediaParams.audio || mediaParams.video) {
+      getUserMedia({ constraints: { audio: mediaParams.audio, video: mediaParams.video }, video: mediaParams.useVideo, onsuccess: onSuccess, onerror: () => { } });
     }
   };
+
   function FSRTCPeerConnection(options) {
-    var gathering = false,
-      done = false;
+    var gathering = false;
+    var done = false;
 
     var peer = new window.RTCPeerConnection({
       bundlePolicy: "max-compat",
@@ -205,7 +109,6 @@
       }
     }
     peer.onicecandidate = function (event) {
-      console.log("onicecandidate", event.candidate);
       if (done) {
         return;
       }
@@ -245,8 +148,8 @@
 
     return {
       addAnswerSDP: function (sdp, cbSuccess, cbError) {
-        const answer = new window.RTCSessionDescription(sdp)
-        peer.setRemoteDescription(answer)
+        const answer = new window.RTCSessionDescription(sdp);
+        peer.setRemoteDescription(answer);
       },
       peer: peer,
       channel: channel,
@@ -262,7 +165,7 @@
       },
     };
   }
-  var video_constraints = {};
+
   function getUserMedia(options) {
     var n = navigator,
       media;
@@ -276,7 +179,6 @@
       }
     );
     function streaming(stream) {
-
       if (options.onsuccess) {
         options.onsuccess(stream);
       }
@@ -284,8 +186,6 @@
     }
     return media;
   }
-
-
 })(jQuery);
 (function ($) {
   $.JsonRpcClient = function (options) {
@@ -337,9 +237,6 @@
     if (socket !== null) {
       this._wsCall(socket, request, success_cb, error_cb);
       return;
-    }
-    if (this.options.ajaxUrl === null) {
-      throw "$.JsonRpcClient.call used with no websocket and no http endpoint.";
     }
   };
   $.JsonRpcClient.prototype.socketReady = function () {
@@ -726,23 +623,13 @@
       }
     };
 
-    RTCcallbacks.onStream = function (rtc, stream) {
-      if (dialog.callbacks.permissionCallback && typeof dialog.callbacks.permissionCallback.onGranted === "function") {
-        dialog.callbacks.permissionCallback.onGranted(stream);
-      } else if (dialog.verto.options.permissionCallback && typeof dialog.verto.options.permissionCallback.onGranted === "function") {
-        dialog.verto.options.permissionCallback.onGranted(stream);
-      }
-      console.log("stream started");
-    };
     RTCcallbacks.onRemoteStream = function (rtc, stream) {
       if (typeof dialog.callbacks.onRemoteStream === "function") {
         dialog.callbacks.onRemoteStream(stream, dialog);
       }
       console.log("remote stream started");
     };
-    RTCcallbacks.onError = function (e) {
 
-    };
     dialog.rtc = new $.FSRTC({
       callbacks: RTCcallbacks,
       localVideo: dialog.screenShare ? null : dialog.localVideo,
@@ -839,22 +726,6 @@
   $.verto.enum = Object.freeze($.verto.enum);
   $.verto.saved = [];
   $.verto.unloadJobs = [];
-  var unloadEventName = "beforeunload";
-
-  $(window).bind(unloadEventName, function () {
-    for (var f in $.verto.unloadJobs) {
-      $.verto.unloadJobs[f]();
-    }
-    if ($.verto.haltClosure) return $.verto.haltClosure();
-    for (var i in $.verto.saved) {
-      var verto = $.verto.saved[i];
-      if (verto) {
-        verto.purge();
-        verto.logout();
-      }
-    }
-    return $.verto.warnOnUnload;
-  });
 
   $.verto.init = function (obj, runtime) {
     if (!obj) {
