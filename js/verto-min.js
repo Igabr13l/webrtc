@@ -20,7 +20,6 @@
     this.videoEnabled = true;
     this.mediaData = { SDP: null };
     this.constraints = { offerToReceiveAudio: this.options.useSpeak === "none" ? false : true, offerToReceiveVideo: this.options.useVideo ? true : false };
-
   };
 
   function onICESDP(self, sdp) {
@@ -364,6 +363,7 @@
     }
   };
 })(jQuery);
+
 (function ($) {
   var generateGUID =
     typeof window.crypto !== "undefined" && typeof window.crypto.getRandomValues !== "undefined"
@@ -655,8 +655,5 @@
   $.verto.unloadJobs = [];
 
   $.verto.init = function (obj, runtime) {
-
-
   };
-
 })(jQuery);
