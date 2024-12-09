@@ -26,23 +26,12 @@
 
   };
   $.FSRTC.validRes = [];
-  function onStreamError(self, e) {
-
-  }
-  function onStreamSuccess(self, stream) {
-
-  }
-  function onRemoteStreamSuccess(self, stream) {
-
-  }
   function doCallback(self, func, arg) {
     if (func in self.options.callbacks) {
       self.options.callbacks[func](self, arg);
     }
   }
-  function onChannelError(self, e) {
 
-  }
   function onICESDP(self, sdp) {
     //TODO: aca se agrega el SDP al mediaData
     self.mediaData.SDP = sdp.sdp
@@ -74,7 +63,6 @@
       self.options.useAudio.setAttribute("controls", true);
     }
     self.remoteStream = stream;
-    onRemoteStreamSuccess(self, stream);
   }
 
   $.FSRTC.prototype.answer = function (sdp, onSuccess, onError) {
@@ -184,17 +172,13 @@
         onICESDP: function (sdp) {
           return onICESDP(self, sdp);
         },
-        onChannelError: function (e) {
-          return onChannelError(self, e);
-        },
+
         constraints: self.constraints,
         iceServers: self.options.iceServers,
         turnServer: self.options.turnServer,
       });
-      onStreamSuccess(self, stream);
     }
     function onError(e) {
-      onStreamError(self, e);
     }
     var mediaParams = getMediaParams(self);
     console.log("Audio constraints", mediaParams.audio);
@@ -214,26 +198,15 @@
   function FSRTCPeerConnection(options) {
     var gathering = false,
       done = false;
-    var config = {};
-    var default_ice = [{ urls: [""] }];
-    if (self.options.turnServer) {
-      default_ice.push(self.options.turnServer);
-    }
-    if (options.iceServers) {
-      if (typeof options.iceServers === "boolean") {
-        config.iceServers = default_ice;
-      } else {
-        config.iceServers = options.iceServers;
-      }
-    }
-    config.bundlePolicy = "max-compat";
-    var peer = new window.RTCPeerConnection(config);
+
+    var peer = new window.RTCPeerConnection({
+      bundlePolicy: "max-compat",
+    });
 
     var x = 0;
     function ice_handler() {
       done = true;
       gathering = null;
-
       if (options.type == "offer") {
         options.onICESDP(peer.localDescription);
       } else {
@@ -470,7 +443,6 @@
     if (this.options.ajaxUrl === null) {
       throw "$.JsonRpcClient.call used with no websocket and no http endpoint.";
     }
-
   };
   $.JsonRpcClient.prototype.socketReady = function () {
     if (this._ws_socket === null || this._ws_socket.readyState > 1) {
@@ -545,7 +517,6 @@
     }
     return self._ws_socket ? true : false;
   };
-
   $.JsonRpcClient.prototype._getSocket = function (onmessage_cb) {
     if (this.options.socketUrl === null || !("WebSocket" in window)) return null;
     this.connectSocket(onmessage_cb);
@@ -676,9 +647,6 @@
     }
     this._requests.push({ request: { jsonrpc: "2.0", method: method, params: params, id: this.jsonrpcclient._current_id++ }, success_cb: success_cb, error_cb: error_cb });
   };
-
-
-
 })(jQuery);
 (function ($) {
   var generateGUID =
@@ -890,233 +858,25 @@
   };
   $.verto.prototype.handleMessage = function (data) {
     var verto = this;
-    if (!(data && data.method)) {
-      console.error("Invalid Data", data);
-      return;
-    }
+
     if (data.params.callID) {
       var dialog = verto.dialogs[data.params.callID];
-      if (data.method === "verto.attach" && dialog) {
-        delete dialog.verto.dialogs[dialog.callID];
-        dialog.rtc.stop();
-        dialog = null;
-      }
       if (dialog) {
         switch (data.method) {
-          case "verto.bye":
-            dialog.hangup(data.params);
-            break;
-
           case "verto.media":
             dialog.handleMedia(data.params);
             break;
-
-
-          default:
-            console.debug("INVALID METHOD OR NON-EXISTANT CALL REFERENCE IGNORED", dialog, data.method);
-            break;
         }
-      } else {
-        switch (data.method) {
-          case "verto.attach":
-            data.params.attach = true;
-            if (data.params.sdp && data.params.sdp.indexOf("m=video") > 0) {
-              data.params.useVideo = true;
-            }
-            if (data.params.sdp && data.params.sdp.indexOf("stereo=1") > 0) {
-              data.params.useStereo = true;
-            }
-            dialog = new $.verto.dialog($.verto.enum.direction.inbound, verto, data.params);
-            dialog.setState($.verto.enum.state.recovering);
-            break;
-          case "verto.invite":
-            if (data.params.sdp && data.params.sdp.indexOf("m=video") > 0) {
-              data.params.wantVideo = true;
-            }
-            if (data.params.sdp && data.params.sdp.indexOf("stereo=1") > 0) {
-              data.params.useStereo = true;
-            }
-            dialog = new $.verto.dialog($.verto.enum.direction.inbound, verto, data.params);
-            break;
-          default:
-            console.debug("INVALID METHOD OR NON-EXISTANT CALL REFERENCE IGNORED");
-            break;
-        }
-      }
-      return { method: data.method };
-    } else {
-      switch (data.method) {
-        case "verto.punt":
-          verto.purge();
-          verto.logout();
-          break;
-        case "verto.event":
-          var list = null;
-          var key = null;
-          if (data.params) {
-            key = data.params.eventChannel;
-          }
-          if (key) {
-            list = verto.eventSUBS[key];
-            if (!list) {
-              list = verto.eventSUBS[key.split(".")[0]];
-            }
-          }
-          if (!list && key && key === verto.sessid) {
-            if (verto.callbacks.onMessage) {
-              verto.callbacks.onMessage(verto, null, $.verto.enum.message.pvtEvent, data.params);
-            }
-          } else if (!list) {
-            if (!key) {
-              key = "UNDEFINED";
-            }
-            console.error("UNSUBBED or invalid EVENT " + key + " IGNORED");
-          } else {
-            for (var i in list) {
-              var sub = list[i];
-              if (!sub || !sub.ready) {
-                console.error("invalid EVENT for " + key + " IGNORED");
-              } else if (sub.handler) {
-                sub.handler(verto, data.params, sub.userData);
-              } else if (verto.callbacks.onEvent) {
-                verto.callbacks.onEvent(verto, data.params, sub.userData);
-              } else {
-                console.log("EVENT:", data.params);
-              }
-            }
-          }
-          break;
-        case "verto.info":
-          if (verto.callbacks.onMessage) {
-            verto.callbacks.onMessage(verto, null, $.verto.enum.message.info, data.params.msg);
-          }
-          console.debug("MESSAGE from: " + data.params.msg.from, data.params.msg.body);
-          break;
-        case "verto.clientReady":
-          if (verto.callbacks.onMessage) {
-            verto.callbacks.onMessage(verto, null, $.verto.enum.message.clientReady, data.params);
-          }
-          console.debug("CLIENT READY", data.params);
-          break;
-        default:
-          console.error("INVALID METHOD OR NON-EXISTANT CALL REFERENCE IGNORED", data.method);
-          break;
       }
     }
   };
-  var CONFMAN_SERNO = 1;
+
   $.verto.conf = function (verto, params) {
-    var conf = this;
-    conf.params = $.extend({ dialog: null, hasVid: false, laData: null, onBroadcast: null, onLaChange: null, onLaRow: null }, params);
-    conf.verto = verto;
-    conf.serno = CONFMAN_SERNO++;
-    createMainModeratorMethods();
-
-
-  };
-  $.verto.conf.prototype.modCommand = function (cmd, id, value) {
-    var conf = this;
-    conf.verto.rpcClient.call("verto.broadcast", { eventChannel: conf.params.laData.modChannel, data: { application: "conf-control", command: cmd, id: id, value: value } });
   };
   $.verto.conf.prototype.destroy = function () {
-    var conf = this;
-    conf.destroyed = true;
-    conf.params.onBroadcast(conf.verto, conf, "destroy");
-    if (conf.params.laData.modChannel) {
-    }
-    if (conf.params.laData.chatChannel) {
-    }
-    if (conf.params.laData.infoChannel) {
-    }
+
   };
-  function createMainModeratorMethods() {
-    $.verto.conf.prototype.listVideoLayouts = function () {
-      this.modCommand("list-videoLayouts", null, null);
-    };
-    $.verto.conf.prototype.play = function (file) {
-      this.modCommand("play", null, file);
-    };
-    $.verto.conf.prototype.stop = function () {
-      this.modCommand("stop", null, "all");
-    };
-    $.verto.conf.prototype.deaf = function (memberID) {
-      this.modCommand("deaf", parseInt(memberID));
-    };
-    $.verto.conf.prototype.undeaf = function (memberID) {
-      this.modCommand("undeaf", parseInt(memberID));
-    };
-    $.verto.conf.prototype.record = function (file) {
-      this.modCommand("recording", null, ["start", file]);
-    };
-    $.verto.conf.prototype.stopRecord = function () {
-      this.modCommand("recording", null, ["stop", "all"]);
-    };
-    $.verto.conf.prototype.snapshot = function (file) {
-      if (!this.params.hasVid) {
-        throw "Conference has no video";
-      }
-      this.modCommand("vid-write-png", null, file);
-    };
-    $.verto.conf.prototype.setVideoLayout = function (layout, canvasID) {
-      if (!this.params.hasVid) {
-        throw "Conference has no video";
-      }
-      if (canvasID) {
-        this.modCommand("vid-layout", null, [layout, canvasID]);
-      } else {
-        this.modCommand("vid-layout", null, layout);
-      }
-    };
-    $.verto.conf.prototype.kick = function (memberID) {
-      this.modCommand("kick", parseInt(memberID));
-    };
-    $.verto.conf.prototype.muteMic = function (memberID) {
-      this.modCommand("tmute", parseInt(memberID));
-    };
-    $.verto.conf.prototype.muteVideo = function (memberID) {
-      if (!this.params.hasVid) {
-        throw "Conference has no video";
-      }
-      this.modCommand("tvmute", parseInt(memberID));
-    };
-    $.verto.conf.prototype.presenter = function (memberID) {
-      if (!this.params.hasVid) {
-        throw "Conference has no video";
-      }
-      this.modCommand("vid-res-id", parseInt(memberID), "presenter");
-    };
-    $.verto.conf.prototype.videoFloor = function (memberID) {
-      if (!this.params.hasVid) {
-        throw "Conference has no video";
-      }
-      this.modCommand("vid-floor", parseInt(memberID), "force");
-    };
-    $.verto.conf.prototype.banner = function (memberID, text) {
-      if (!this.params.hasVid) {
-        throw "Conference has no video";
-      }
-      this.modCommand("vid-banner", parseInt(memberID), escape(text));
-    };
-    $.verto.conf.prototype.volumeDown = function (memberID) {
-      this.modCommand("volume_out", parseInt(memberID), "down");
-    };
-    $.verto.conf.prototype.volumeUp = function (memberID) {
-      this.modCommand("volume_out", parseInt(memberID), "up");
-    };
-    $.verto.conf.prototype.gainDown = function (memberID) {
-      this.modCommand("volume_in", parseInt(memberID), "down");
-    };
-    $.verto.conf.prototype.gainUp = function (memberID) {
-      this.modCommand("volume_in", parseInt(memberID), "up");
-    };
-    $.verto.conf.prototype.transfer = function (memberID, exten) {
-      this.modCommand("transfer", parseInt(memberID), exten);
-    };
-    $.verto.conf.prototype.sendChat = function (message, type) {
-      var conf = this;
-      conf.verto.rpcClient.call("verto.broadcast", { eventChannel: conf.params.laData.chatChannel, data: { action: "send", message: message, type: type } });
-    };
-  }
+
   $.verto.modfuncs = {};
   $.verto.confMan = function (verto, params) { };
   $.verto.confMan.prototype.modCommand = function (cmd, id, value) {
@@ -1218,10 +978,8 @@
       }
       if (rtc.type == "offer") {
         if (dialog.state == $.verto.enum.state.active) {
-          dialog.setState($.verto.enum.state.requesting);
           dialog.sendMethod("verto.attach", { sdp: rtc.mediaData.SDP });
         } else {
-          dialog.setState($.verto.enum.state.requesting);
           dialog.sendMethod("verto.invite", { sdp: rtc.mediaData.SDP });
         }
       }
@@ -1267,13 +1025,7 @@
       useStream: dialog.params.useStream,
     });
     dialog.rtc.verto = dialog.verto;
-    if (dialog.direction == $.verto.enum.direction.inbound) {
-      if (dialog.attach) {
-        dialog.answer();
-      } else {
-        dialog.ring();
-      }
-    }
+
   };
   $.verto.dialog.prototype.invite = function () {
     var dialog = this;
@@ -1303,12 +1055,7 @@
       }
     );
   };
-  function checkStateChange(oldS, newS) {
-    if (newS == $.verto.enum.state.purge || $.verto.enum.states[oldS.name][newS.name]) {
-      return true;
-    }
-    return false;
-  }
+
   function find_name(id) {
     for (var i in $.verto.audioOutDevices) {
       var source = $.verto.audioOutDevices[i];
@@ -1349,63 +1096,7 @@
       }
     }
   };
-  $.verto.dialog.prototype.setState = function (state) {
-    var dialog = this;
-    if (dialog.state == $.verto.enum.state.ringing) {
-      dialog.stopRinging();
-    }
-    if (dialog.state == state || !checkStateChange(dialog.state, state)) {
-      console.error("Dialog " + dialog.callID + ": INVALID state change from " + dialog.state.name + " to " + state.name);
-      dialog.hangup();
-      return false;
-    }
-    console.log("Dialog " + dialog.callID + ": state change from " + dialog.state.name + " to " + state.name);
-    dialog.lastState = dialog.state;
-    dialog.state = state;
-    if (dialog.callbacks.onDialogState) {
-      dialog.callbacks.onDialogState(this);
-    }
-    switch (dialog.state) {
-      case $.verto.enum.state.early:
-      case $.verto.enum.state.active:
-        var speaker = dialog.useSpeak;
-        console.info("Using Speaker: ", speaker);
-        if (speaker && speaker !== "any" && speaker !== "none") {
-          setTimeout(function () {
-            dialog.setAudioPlaybackDevice(speaker);
-          }, 500);
-        }
-        break;
-      case $.verto.enum.state.trying:
-        setTimeout(function () {
-          if (dialog.state == $.verto.enum.state.trying) {
-            dialog.setState($.verto.enum.state.hangup);
-          }
-        }, 30000);
-        break;
-      case $.verto.enum.state.purge:
-        dialog.setState($.verto.enum.state.destroy);
-        break;
-      case $.verto.enum.state.hangup:
-        if (dialog.lastState.val > $.verto.enum.state.requesting.val && dialog.lastState.val < $.verto.enum.state.hangup.val) {
-          dialog.sendMethod("verto.bye", {});
-        }
-        dialog.setState($.verto.enum.state.destroy);
-        break;
-      case $.verto.enum.state.destroy:
-        if (typeof dialog.verto.options.tag === "function") {
-          $("#" + dialog.params.tag).remove();
-        }
-        delete dialog.verto.dialogs[dialog.callID];
-        if (dialog.params.screenShare) {
-          dialog.rtc.stopPeer();
-        } else {
-          dialog.rtc.stop();
-        }
-        break;
-    }
-    return true;
-  };
+
   $.verto.dialog.prototype.processReply = function (method, success, e) {
   };
   $.verto.dialog.prototype.hangup = function (params) {
@@ -1421,54 +1112,18 @@
     if (!dialog.cause && !dialog.causeCode) {
       dialog.cause = "NORMAL_CLEARING";
     }
-    if (dialog.state.val >= $.verto.enum.state.new.val && dialog.state.val < $.verto.enum.state.hangup.val) {
-      dialog.setState($.verto.enum.state.hangup);
-    } else if (dialog.state.val < $.verto.enum.state.destroy) {
-      dialog.setState($.verto.enum.state.destroy);
-    }
-  };
-  $.verto.dialog.prototype.stopRinging = function () {
-
   };
 
-  $.verto.dialog.prototype.ring = function () {
-
-  };
-
-  $.verto.dialog.prototype.transfer = function (dest, params) {
-
-  };
-  $.verto.dialog.prototype.answer = function (params) {
-
-  };
-  $.verto.dialog.prototype.handleAnswer = function (params) {
-
-  };
-
-  $.verto.dialog.prototype.sendMessage = function (msg, params) {
-
-  };
-  $.verto.dialog.prototype.handleInfo = function (params) {
-
-  };
-  $.verto.dialog.prototype.handleDisplay = function (params) {
-
-  };
   $.verto.dialog.prototype.handleMedia = function (params) {
     var dialog = this;
-    if (dialog.state.val >= $.verto.enum.state.early.val) {
-      return;
-    }
-    dialog.gotEarly = true;
 
+    dialog.gotEarly = true;
     dialog.rtc.answer(
       params.sdp,
       function () {
         console.log("Dialog " + dialog.callID + "Establishing early media");
-        dialog.setState($.verto.enum.state.early);
         if (dialog.gotAnswer) {
           console.log("Dialog " + dialog.callID + "Answering Channel");
-          dialog.setState($.verto.enum.state.active);
         }
       },
       function (e) {
