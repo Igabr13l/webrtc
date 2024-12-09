@@ -58,10 +58,7 @@
     console.log("REMOTE STREAM", stream, element);
     FSRTCattachMediaStream(element, stream);
     var iOS = ["iPad", "iPhone", "iPod"].indexOf(navigator.platform) >= 0;
-    if (iOS) {
-      self.options.useAudio.setAttribute("playsinline", true);
-      self.options.useAudio.setAttribute("controls", true);
-    }
+
     self.remoteStream = stream;
   }
 
@@ -623,10 +620,7 @@
     }
   };
   $.JsonRpcClient._batchObject = function (jsonrpcclient, all_done_cb, error_cb) {
-    this._requests = [];
-    this.jsonrpcclient = jsonrpcclient;
-    this.all_done_cb = all_done_cb;
-    this.error_cb = typeof error_cb === "function" ? error_cb : function () { };
+
   };
   $.JsonRpcClient._batchObject.prototype.call = function (method, params, success_cb, error_cb) {
     if (!params) {
@@ -747,112 +741,37 @@
     verto.rpcClient.call("login", {});
   };
   $.verto.prototype.loginData = function (params) {
-    var verto = this;
-    verto.options.login = params.login;
-    verto.options.passwd = params.passwd;
-    verto.rpcClient.loginData(params);
+
   };
   $.verto.prototype.logout = function (msg) {
-    var verto = this;
-    verto.rpcClient.closeSocket();
-    if (verto.callbacks.onWSClose) {
-      verto.callbacks.onWSClose(verto, false);
-    }
-    verto.purge();
+
   };
   $.verto.prototype.login = function (msg) {
-    var verto = this;
-    verto.logout();
-    verto.rpcClient.call("login", {});
+
   };
   $.verto.prototype.message = function (msg) {
-    var verto = this;
-    var err = 0;
-    if (!msg.to) {
-      console.error("Missing To");
-      err++;
-    }
-    if (!msg.body) {
-      console.error("Missing Body");
-      err++;
-    }
-    if (err) {
-      return false;
-    }
-    verto.sendMethod("verto.info", { msg: msg });
-    return true;
+
   };
   $.verto.prototype.processReply = function (method, success, e) {
-    var verto = this;
-    var i;
 
   };
   $.verto.prototype.sendMethod = function (method, params) {
-    var verto = this;
-    verto.rpcClient.call(
-      method,
-      params,
-      function (e) {
-        verto.processReply(method, true, e);
-      },
-      function (e) {
-        verto.processReply(method, false, e);
-      }
-    );
+
   };
 
   $.verto.prototype.broadcast = function (channel, params) {
-    var verto = this;
-    var msg = { eventChannel: channel, data: {} };
-    for (var i in params) {
-      msg.data[i] = params[i];
-    }
-    verto.sendMethod("verto.broadcast", msg);
+
   };
   $.verto.prototype.purge = function (callID) {
-    var verto = this;
-    var x = 0;
-    var i;
-    for (i in verto.dialogs) {
-      if (!x) {
-        console.log("purging dialogs");
-      }
-      x++;
-      verto.dialogs[i].setState($.verto.enum.state.purge);
-    }
-    for (i in verto.eventSUBS) {
-      if (verto.eventSUBS[i]) {
-        console.log("purging subscription: " + i);
-        delete verto.eventSUBS[i];
-      }
-    }
+
   };
   $.verto.prototype.hangup = function (callID) {
-    var verto = this;
-    if (callID) {
-      var dialog = verto.dialogs[callID];
-      if (dialog) {
-        dialog.hangup();
-      }
-    } else {
-      for (var i in verto.dialogs) {
-        verto.dialogs[i].hangup();
-      }
-    }
+
   };
   $.verto.prototype.newCall = function (args, callbacks) {
     var verto = this;
-    if (!verto.rpcClient.socketReady()) {
-      console.error("Not Connected...");
-      return;
-    }
-    if (args["useCamera"]) {
-      verto.options.deviceParams["useCamera"] = args["useCamera"];
-    }
+
     var dialog = new $.verto.dialog($.verto.enum.direction.outbound, this, args);
-    if (callbacks) {
-      dialog.callbacks = callbacks;
-    }
     dialog.invite();
     return dialog;
   };
@@ -1056,62 +975,9 @@
     );
   };
 
-  function find_name(id) {
-    for (var i in $.verto.audioOutDevices) {
-      var source = $.verto.audioOutDevices[i];
-      if (source.id === id) {
-        return source.label;
-      }
-    }
-    return id;
-  }
-  $.verto.dialog.prototype.setAudioPlaybackDevice = function (sinkId, callback, arg) {
-    var dialog = this;
-    var element = dialog.audioStream;
-    if (typeof element.sinkId !== "undefined") {
-      var devname = find_name(sinkId);
-      console.info("Dialog: " + dialog.callID + " Setting speaker:", element, devname);
-      element
-        .setSinkId(sinkId)
-        .then(function () {
-          console.log("Dialog: " + dialog.callID + " Success, audio output device attached: " + sinkId);
-          if (callback) {
-            callback(true, devname, arg);
-          }
-        })
-        .catch(function (error) {
-          var errorMessage = error;
-          if (error.name === "SecurityError") {
-            errorMessage = "Dialog: " + dialog.callID + " You need to use HTTPS for selecting audio output " + "device: " + error;
-          }
-          if (callback) {
-            callback(false, null, arg);
-          }
-          console.error(errorMessage);
-        });
-    } else {
-      console.warn("Dialog: " + dialog.callID + " Browser does not support output device selection.");
-      if (callback) {
-        callback(false, null, arg);
-      }
-    }
-  };
-
   $.verto.dialog.prototype.processReply = function (method, success, e) {
   };
   $.verto.dialog.prototype.hangup = function (params) {
-    var dialog = this;
-    if (params) {
-      if (params.causeCode) {
-        dialog.causeCode = params.causeCode;
-      }
-      if (params.cause) {
-        dialog.cause = params.cause;
-      }
-    }
-    if (!dialog.cause && !dialog.causeCode) {
-      dialog.cause = "NORMAL_CLEARING";
-    }
   };
 
   $.verto.dialog.prototype.handleMedia = function (params) {
@@ -1159,14 +1025,12 @@
   $.verto.enum.state = $.verto.ENUM("new requesting trying recovering ringing answering early active held hangup destroy purge");
   $.verto.enum.direction = $.verto.ENUM("inbound outbound");
   $.verto.enum.message = $.verto.ENUM("display info pvtEvent clientReady");
+
   $.verto.enum = Object.freeze($.verto.enum);
   $.verto.saved = [];
   $.verto.unloadJobs = [];
   var unloadEventName = "beforeunload";
-  var iOS = ["iPad", "iPhone", "iPod"].indexOf(navigator.platform) >= 0;
-  if (iOS) {
-    unloadEventName = "pagehide";
-  }
+
   $(window).bind(unloadEventName, function () {
     for (var f in $.verto.unloadJobs) {
       $.verto.unloadJobs[f]();
