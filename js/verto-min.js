@@ -1,23 +1,4 @@
 (function ($) {
-  function findLine(sdpLines, prefix, substr) {
-    return findLineInRange(sdpLines, 0, -1, prefix, substr);
-  }
-  function findLineInRange(sdpLines, startLine, endLine, prefix, substr) {
-    var realEndLine = endLine != -1 ? endLine : sdpLines.length;
-    for (var i = startLine; i < realEndLine; ++i) {
-      if (sdpLines[i].indexOf(prefix) === 0) {
-        if (!substr || sdpLines[i].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
-          return i;
-        }
-      }
-    }
-    return null;
-  }
-  function getCodecPayloadType(sdpLine) {
-    var pattern = new RegExp("a=rtpmap:(\\d+) \\w+\\/\\d+");
-    var result = sdpLine.match(pattern);
-    return result && result.length == 2 ? result[1] : null;
-  }
   $.FSRTC = function (options) {
     this.options = $.extend(
       {
@@ -45,73 +26,26 @@
 
   };
   $.FSRTC.validRes = [];
-  $.FSRTC.prototype.useVideo = function (obj, local) {
-    var self = this;
-    if (obj) {
-      self.options.useVideo = obj;
-      self.options.localVideo = local;
-      self.constraints.offerToReceiveVideo = true;
-    } else {
-      self.options.useVideo = null;
-      self.options.localVideo = null;
-      self.constraints.offerToReceiveVideo = false;
-    }
-    if (self.options.useVideo) {
-      self.options.useVideo.style.display = "none";
-    }
-  };
-  $.FSRTC.prototype.useStereo = function (on) {
-    var self = this;
-    self.options.useStereo = on;
-  };
-  $.FSRTC.prototype.stereoHack = function (sdp) {
-    var self = this;
-    if (!self.options.useStereo) {
-      return sdp;
-    }
-    var sdpLines = sdp.split("\r\n");
-    var opusIndex = findLine(sdpLines, "a=rtpmap", "opus/48000"),
-      opusPayload;
-    if (!opusIndex) {
-      return sdp;
-    } else {
-      opusPayload = getCodecPayloadType(sdpLines[opusIndex]);
-    }
-    var fmtpLineIndex = findLine(sdpLines, "a=fmtp:" + opusPayload.toString());
-    if (fmtpLineIndex === null) {
-      sdpLines[opusIndex] = sdpLines[opusIndex] + "\r\na=fmtp:" + opusPayload.toString() + " stereo=1; sprop-stereo=1";
-    } else {
-      sdpLines[fmtpLineIndex] = sdpLines[fmtpLineIndex].concat("; stereo=1; sprop-stereo=1");
-    }
-    sdp = sdpLines.join("\r\n");
-    return sdp;
-  };
-
   function onStreamError(self, e) {
-    console.log("There has been a problem retrieving the streams - did you allow access? Check Device Resolution", e);
-    doCallback(self, "onError", e);
+
   }
   function onStreamSuccess(self, stream) {
-    console.log("Stream Success");
-    doCallback(self, "onStream", stream);
+
   }
   function onRemoteStreamSuccess(self, stream) {
-    console.log("Remote Stream Success");
-    doCallback(self, "onRemoteStream", stream);
+
   }
   function doCallback(self, func, arg) {
     if (func in self.options.callbacks) {
       self.options.callbacks[func](self, arg);
     }
   }
-
   function onChannelError(self, e) {
-    console.error("Channel Error", e);
-    doCallback(self, "onError", e);
+
   }
   function onICESDP(self, sdp) {
     //TODO: aca se agrega el SDP al mediaData
-    self.mediaData.SDP = self.stereoHack(sdp.sdp);
+    self.mediaData.SDP = sdp.sdp
     console.log("ICE SDP");
     doCallback(self, "onICESDP");
   }
@@ -147,53 +81,10 @@
     this.peer.addAnswerSDP({ type: "answer", sdp: sdp }, onSuccess, onError);
   };
   $.FSRTC.prototype.stopPeer = function () {
-    if (self.peer) {
-      console.log("stopping peer");
-      self.peer.stop();
-    }
+
   };
   $.FSRTC.prototype.stop = function () {
-    var self = this;
-    if (self.options.useVideo) {
-      self.options.useVideo.style.display = "none";
-      self.options.useVideo["src"] = "";
-    }
-    if (self.localStream && !self.options.useStream) {
-      if (typeof self.localStream.stop == "function") {
-        self.localStream.stop();
-      } else {
-        if (self.localStream.active) {
-          var tracks = self.localStream.getTracks();
-          console.log(tracks);
-          tracks.forEach(function (track, index) {
-            console.log(track);
-            track.stop();
-          });
-        }
-      }
-      self.localStream = null;
-    }
-    if (self.options.localVideo) {
-      deactivateLocalVideo(self.options.localVideo);
-    }
-    if (self.options.localVideoStream && !self.options.useStream) {
-      if (typeof self.options.localVideoStream.stop == "function") {
-        self.options.localVideoStream.stop();
-      } else {
-        if (self.options.localVideoStream.active) {
-          var tracks = self.options.localVideoStream.getTracks();
-          console.log(tracks);
-          tracks.forEach(function (track, index) {
-            console.log(track);
-            track.stop();
-          });
-        }
-      }
-    }
-    if (self.peer) {
-      console.log("stopping peer");
-      self.peer.stop();
-    }
+
   };
   function getMediaParams(obj) {
     var audio;
@@ -311,9 +202,7 @@
     if (self.options.useStream) {
       if (self.options.useVideo) {
         self.options.localVideoStream = self.options.useStream;
-        if (self.options.localVideo) {
-          activateLocalVideo(self.options.localVideo, self.options.useStream);
-        }
+
       }
       onSuccess(self.options.useStream);
     } else if (mediaParams.audio || mediaParams.video) {
@@ -412,14 +301,6 @@
     };
   }
   var video_constraints = {};
-  function activateLocalVideo(el, stream) {
-    el.srcObject = stream;
-    el.style.display = "block";
-  }
-  function deactivateLocalVideo(el) {
-    el.srcObject = null;
-    el.style.display = "none";
-  }
   function getUserMedia(options) {
     var n = navigator,
       media;
@@ -433,9 +314,7 @@
       }
     );
     function streaming(stream) {
-      if (options.localVideo) {
-        activateLocalVideo(options.localVideo, stream);
-      }
+
       if (options.onsuccess) {
         options.onsuccess(stream);
       }
@@ -443,14 +322,6 @@
     }
     return media;
   }
-  $.FSRTC.resSupported = function (w, h) {
-    for (var i in $.FSRTC.validRes) {
-      if ($.FSRTC.validRes[i][0] == w && $.FSRTC.validRes[i][1] == h) {
-        return true;
-      }
-    }
-    return false;
-  };
   $.FSRTC.bestResSupported = function () {
     var w = 0,
       h = 0;
@@ -599,26 +470,7 @@
     if (this.options.ajaxUrl === null) {
       throw "$.JsonRpcClient.call used with no websocket and no http endpoint.";
     }
-    $.ajax({
-      type: "POST",
-      url: this.options.ajaxUrl,
-      data: $.toJSON(request),
-      dataType: "json",
-      cache: false,
-      success: function (data) {
-        if ("error" in data) error_cb(data.error, this);
-        success_cb(data.result, this);
-      },
-      error: function (jqXHR, textStatus, errorThrown) {
-        try {
-          var response = $.parseJSON(jqXHR.responseText);
-          if ("console" in window) console.log(response);
-          error_cb(response.error, this);
-        } catch (err) {
-          error_cb({ error: jqXHR.responseText }, this);
-        }
-      },
-    });
+
   };
   $.JsonRpcClient.prototype.socketReady = function () {
     if (this._ws_socket === null || this._ws_socket.readyState > 1) {
@@ -926,8 +778,6 @@
     }
     verto.rpcClient.call("login", {});
   };
-
-
   $.verto.prototype.loginData = function (params) {
     var verto = this;
     verto.options.login = params.login;
@@ -1056,18 +906,12 @@
           case "verto.bye":
             dialog.hangup(data.params);
             break;
-          case "verto.answer":
-            dialog.handleAnswer(data.params);
-            break;
+
           case "verto.media":
             dialog.handleMedia(data.params);
             break;
-          case "verto.display":
-            dialog.handleDisplay(data.params);
-            break;
-          case "verto.info":
-            dialog.handleInfo(data.params);
-            break;
+
+
           default:
             console.debug("INVALID METHOD OR NON-EXISTANT CALL REFERENCE IGNORED", dialog, data.method);
             break;
@@ -1122,8 +966,6 @@
             if (verto.callbacks.onMessage) {
               verto.callbacks.onMessage(verto, null, $.verto.enum.message.pvtEvent, data.params);
             }
-          } else if (!list && key && verto.dialogs[key]) {
-            verto.dialogs[key].sendMessage($.verto.enum.message.pvtEvent, data.params);
           } else if (!list) {
             if (!key) {
               key = "UNDEFINED";
@@ -1161,426 +1003,6 @@
           break;
       }
     }
-  };
-  var del_array = function (array, name) {
-    var r = [];
-    var len = array.length;
-    for (var i = 0; i < len; i++) {
-      if (array[i] != name) {
-        r.push(array[i]);
-      }
-    }
-    return r;
-  };
-  var hashArray = function () {
-    var vha = this;
-    var hash = {};
-    var array = [];
-    vha.reorder = function (a) {
-      array = a;
-      var h = hash;
-      hash = {};
-      var len = array.length;
-      for (var i = 0; i < len; i++) {
-        var key = array[i];
-        if (h[key]) {
-          hash[key] = h[key];
-          delete h[key];
-        }
-      }
-      h = undefined;
-    };
-    vha.clear = function () {
-      hash = undefined;
-      array = undefined;
-      hash = {};
-      array = [];
-    };
-    vha.add = function (name, val, insertAt) {
-      var redraw = false;
-      if (!hash[name]) {
-        if (insertAt === undefined || insertAt < 0 || insertAt >= array.length) {
-          array.push(name);
-        } else {
-          var x = 0;
-          var n = [];
-          var len = array.length;
-          for (var i = 0; i < len; i++) {
-            if (x++ == insertAt) {
-              n.push(name);
-            }
-            n.push(array[i]);
-          }
-          array = undefined;
-          array = n;
-          n = undefined;
-          redraw = true;
-        }
-      }
-      hash[name] = val;
-      return redraw;
-    };
-    vha.del = function (name) {
-      var r = false;
-      if (hash[name]) {
-        array = del_array(array, name);
-        delete hash[name];
-        r = true;
-      } else {
-        console.error("can't del nonexistant key " + name);
-      }
-      return r;
-    };
-    vha.get = function (name) {
-      return hash[name];
-    };
-    vha.order = function () {
-      return array;
-    };
-    vha.hash = function () {
-      return hash;
-    };
-    vha.indexOf = function (name) {
-      var len = array.length;
-      for (var i = 0; i < len; i++) {
-        if (array[i] == name) {
-          return i;
-        }
-      }
-    };
-    vha.arrayLen = function () {
-      return array.length;
-    };
-    vha.asArray = function () {
-      var r = [];
-      var len = array.length;
-      for (var i = 0; i < len; i++) {
-        var key = array[i];
-        r.push(hash[key]);
-      }
-      return r;
-    };
-    vha.each = function (cb) {
-      var len = array.length;
-      for (var i = 0; i < len; i++) {
-        cb(array[i], hash[array[i]]);
-      }
-    };
-    vha.dump = function (html) {
-      var str = "";
-      vha.each(function (name, val) {
-        str += "name: " + name + " val: " + JSON.stringify(val) + (html ? "<br>" : "\n");
-      });
-      return str;
-    };
-  };
-  $.verto.liveArray = function (verto, context, name, config) {
-    var la = this;
-    var lastSerno = 0;
-    var binding = null;
-    var user_obj = config.userObj;
-    var local = false;
-    hashArray.call(la);
-    la._add = la.add;
-    la._del = la.del;
-    la._reorder = la.reorder;
-    la._clear = la.clear;
-    la.context = context;
-    la.name = name;
-    la.user_obj = user_obj;
-    la.verto = verto;
-    la.broadcast = function (channel, obj) {
-      verto.broadcast(channel, obj);
-    };
-    la.errs = 0;
-    la.clear = function () {
-      la._clear();
-      lastSerno = 0;
-      if (la.onChange) {
-        la.onChange(la, { action: "clear" });
-      }
-    };
-    la.checkSerno = function (serno) {
-      if (serno < 0) {
-        return true;
-      }
-      if (lastSerno > 0 && serno != lastSerno + 1) {
-        if (la.onErr) {
-          la.onErr(la, { lastSerno: lastSerno, serno: serno });
-        }
-        la.errs++;
-        console.debug(la.errs);
-        if (la.errs < 3) {
-          la.bootstrap(la.user_obj);
-        }
-        return false;
-      } else {
-        lastSerno = serno;
-        return true;
-      }
-    };
-    la.reorder = function (serno, a) {
-      if (la.checkSerno(serno)) {
-        la._reorder(a);
-        if (la.onChange) {
-          la.onChange(la, { serno: serno, action: "reorder" });
-        }
-      }
-    };
-    la.init = function (serno, val, key, index) {
-      if (key === null || key === undefined) {
-        key = serno;
-      }
-      if (la.checkSerno(serno)) {
-        if (la.onChange) {
-          la.onChange(la, { serno: serno, action: "init", index: index, key: key, data: val });
-        }
-      }
-    };
-    la.bootObj = function (serno, val) {
-      if (la.checkSerno(serno)) {
-        for (var i in val) {
-          la._add(val[i][0], val[i][1]);
-        }
-        if (la.onChange) {
-          la.onChange(la, { serno: serno, action: "bootObj", data: val, redraw: true });
-        }
-      }
-    };
-    la.add = function (serno, val, key, index) {
-      if (key === null || key === undefined) {
-        key = serno;
-      }
-      if (la.checkSerno(serno)) {
-        var redraw = la._add(key, val, index);
-        if (la.onChange) {
-          la.onChange(la, { serno: serno, action: "add", index: index, key: key, data: val, redraw: redraw });
-        }
-      }
-    };
-    la.modify = function (serno, val, key, index) {
-      if (key === null || key === undefined) {
-        key = serno;
-      }
-      if (la.checkSerno(serno)) {
-        la._add(key, val, index);
-        if (la.onChange) {
-          la.onChange(la, { serno: serno, action: "modify", key: key, data: val, index: index });
-        }
-      }
-    };
-    la.del = function (serno, key, index) {
-      if (key === null || key === undefined) {
-        key = serno;
-      }
-      if (la.checkSerno(serno)) {
-        if (index === null || index < 0 || index === undefined) {
-          index = la.indexOf(key);
-        }
-        var ok = la._del(key);
-        if (ok && la.onChange) {
-          la.onChange(la, { serno: serno, action: "del", key: key, index: index });
-        }
-      }
-    };
-    var eventHandler = function (v, e, la) {
-      var packet = e.data;
-      if (packet.name != la.name) {
-        return;
-      }
-      switch (packet.action) {
-        case "init":
-          la.init(packet.wireSerno, packet.data, packet.hashKey, packet.arrIndex);
-          break;
-        case "bootObj":
-          la.bootObj(packet.wireSerno, packet.data);
-          break;
-        case "add":
-          la.add(packet.wireSerno, packet.data, packet.hashKey, packet.arrIndex);
-          break;
-        case "modify":
-          if (!(packet.arrIndex || packet.hashKey)) {
-            console.error("Invalid Packet", packet);
-          } else {
-            la.modify(packet.wireSerno, packet.data, packet.hashKey, packet.arrIndex);
-          }
-          break;
-        case "del":
-          if (!(packet.arrIndex || packet.hashKey)) {
-            console.error("Invalid Packet", packet);
-          } else {
-            la.del(packet.wireSerno, packet.hashKey, packet.arrIndex);
-          }
-          break;
-        case "clear":
-          la.clear();
-          break;
-        case "reorder":
-          la.reorder(packet.wireSerno, packet.order);
-          break;
-        default:
-          if (la.checkSerno(packet.wireSerno)) {
-            if (la.onChange) {
-              la.onChange(la, { serno: packet.wireSerno, action: packet.action, data: packet.data });
-            }
-          }
-          break;
-      }
-    };
-    if (la.context) {
-    }
-    la.destroy = function () {
-      la._clear();
-    };
-    la.sendCommand = function (cmd, obj) {
-      var self = la;
-      self.broadcast(self.context, { liveArray: { command: cmd, context: self.context, name: self.name, obj: obj } });
-    };
-    la.bootstrap = function (obj) {
-      var self = la;
-      la.sendCommand("bootstrap", obj);
-    };
-    la.changepage = function (obj) {
-      var self = la;
-      self.clear();
-      self.broadcast(self.context, { liveArray: { command: "changepage", context: la.context, name: la.name, obj: obj } });
-    };
-    la.heartbeat = function (obj) {
-      var self = la;
-      var callback = function () {
-        self.heartbeat.call(self, obj);
-      };
-      self.broadcast(self.context, { liveArray: { command: "heartbeat", context: self.context, name: self.name, obj: obj } });
-      self.hb_pid = setTimeout(callback, 30000);
-    };
-    la.bootstrap(la.user_obj);
-  };
-  $.verto.liveTable = function (verto, context, name, jq, config) {
-    var dt;
-    var la = new $.verto.liveArray(verto, context, name, { subParams: config.subParams });
-    var lt = this;
-    lt.liveArray = la;
-    lt.dataTable = dt;
-    lt.verto = verto;
-    lt.destroy = function () {
-      if (dt) {
-        dt.fnDestroy();
-      }
-      if (la) {
-        la.destroy();
-      }
-      dt = null;
-      la = null;
-    };
-    la.onErr = function (obj, args) {
-      console.error("Error: ", obj, args);
-    };
-    function genRow(data) {
-      if (typeof data[4] === "string" && data[4].indexOf("{") > -1) {
-        var tmp = $.parseJSON(data[4]);
-        data[4] = tmp.oldStatus;
-        data[5] = null;
-      }
-      return data;
-    }
-    function genArray(obj) {
-      var data = obj.asArray();
-      for (var i in data) {
-        data[i] = genRow(data[i]);
-      }
-      return data;
-    }
-    la.onChange = function (obj, args) {
-      var index = 0;
-      var iserr = 0;
-      if (!dt) {
-        if (!config.aoColumns) {
-          if (args.action != "init") {
-            return;
-          }
-          config.aoColumns = [];
-          for (var i in args.data) {
-            config.aoColumns.push({ sTitle: args.data[i] });
-          }
-        }
-        dt = jq.dataTable(config);
-      }
-      if (dt && (args.action == "del" || args.action == "modify")) {
-        index = args.index;
-        if (index === undefined && args.key) {
-          index = la.indexOf(args.key);
-        }
-        if (index === undefined) {
-          console.error("INVALID PACKET Missing INDEX\n", args);
-          return;
-        }
-      }
-      if (config.onChange) {
-        config.onChange(obj, args);
-      }
-      try {
-        switch (args.action) {
-          case "bootObj":
-            if (!args.data) {
-              console.error("missing data");
-              return;
-            }
-            dt.fnClearTable();
-            dt.fnAddData(genArray(obj));
-            dt.fnAdjustColumnSizing();
-            break;
-          case "add":
-            if (!args.data) {
-              console.error("missing data");
-              return;
-            }
-            if (args.redraw > -1) {
-              dt.fnClearTable();
-              dt.fnAddData(genArray(obj));
-            } else {
-              dt.fnAddData(genRow(args.data));
-            }
-            dt.fnAdjustColumnSizing();
-            break;
-          case "modify":
-            if (!args.data) {
-              return;
-            }
-            dt.fnUpdate(genRow(args.data), index);
-            dt.fnAdjustColumnSizing();
-            break;
-          case "del":
-            dt.fnDeleteRow(index);
-            dt.fnAdjustColumnSizing();
-            break;
-          case "clear":
-            dt.fnClearTable();
-            break;
-          case "reorder":
-            dt.fnClearTable();
-            dt.fnAddData(genArray(obj));
-            break;
-          case "hide":
-            jq.hide();
-            break;
-          case "show":
-            jq.show();
-            break;
-        }
-      } catch (err) {
-        console.error("ERROR: " + err);
-        iserr++;
-      }
-      if (iserr) {
-        obj.errs++;
-        if (obj.errs < 3) {
-          obj.bootstrap(obj.user_obj);
-        }
-      } else {
-        obj.errs = 0;
-      }
-    };
-    la.onChange(la, { action: "init" });
   };
   var CONFMAN_SERNO = 1;
   $.verto.conf = function (verto, params) {
@@ -1985,7 +1407,6 @@
     return true;
   };
   $.verto.dialog.prototype.processReply = function (method, success, e) {
-
   };
   $.verto.dialog.prototype.hangup = function (params) {
     var dialog = this;
@@ -2007,109 +1428,31 @@
     }
   };
   $.verto.dialog.prototype.stopRinging = function () {
-    var dialog = this;
-    if (dialog.verto.ringer) {
-      dialog.verto.ringer.stop();
-    }
+
   };
-  $.verto.dialog.prototype.indicateRing = function () {
-    var dialog = this;
-    if (dialog.verto.ringer) {
-      dialog.verto.ringer.attr("src", dialog.verto.options.ringFile)[0].play();
-      setTimeout(function () {
-        dialog.stopRinging();
-        if (dialog.state == $.verto.enum.state.ringing) {
-          dialog.indicateRing();
-        }
-      }, dialog.verto.options.ringSleep);
-    }
-  };
+
   $.verto.dialog.prototype.ring = function () {
-    var dialog = this;
-    dialog.setState($.verto.enum.state.ringing);
-    dialog.indicateRing();
+
   };
-
-
 
   $.verto.dialog.prototype.transfer = function (dest, params) {
-    var dialog = this;
-    if (dest) {
-      dialog.sendMethod("verto.modify", { action: "transfer", destination: dest, params: params });
-    }
+
   };
   $.verto.dialog.prototype.answer = function (params) {
-    var dialog = this;
-    if (!dialog.answered) {
-      if (!params) {
-        params = {};
-      }
-      params.sdp = dialog.params.sdp;
-      if (params) {
 
-        dialog.params.callee_id_name = params.callee_id_name;
-        dialog.params.callee_id_number = params.callee_id_number;
-        if (params.useCamera) {
-          dialog.useCamera = params.useCamera;
-        }
-        if (params.useMic) {
-          dialog.useMic = params.useMic;
-        }
-        if (params.useSpeak) {
-          dialog.useSpeak = params.useSpeak;
-        }
-      }
-
-      dialog.answered = true;
-    }
   };
   $.verto.dialog.prototype.handleAnswer = function (params) {
-    var dialog = this;
-    dialog.gotAnswer = true;
-    if (dialog.state.val >= $.verto.enum.state.active.val) {
-      return;
-    }
-    if (dialog.state.val >= $.verto.enum.state.early.val) {
-      dialog.setState($.verto.enum.state.active);
-    } else {
-      if (dialog.gotEarly) {
-        console.log("Dialog " + dialog.callID + " Got answer while still establishing early media, delaying...");
-      } else {
-        console.log("Dialog " + dialog.callID + " Answering Channel");
-        dialog.rtc.answer(
-          params.sdp,
-          function () {
-            dialog.setState($.verto.enum.state.active);
-          },
-          function (e) {
-            console.error(e);
-            dialog.hangup();
-          }
-        );
-        console.log("Dialog " + dialog.callID + "ANSWER SDP", params.sdp);
-      }
-    }
+
   };
 
   $.verto.dialog.prototype.sendMessage = function (msg, params) {
-    var dialog = this;
-    if (dialog.callbacks.onMessage) {
-      dialog.callbacks.onMessage(dialog.verto, dialog, msg, params);
-    }
+
   };
   $.verto.dialog.prototype.handleInfo = function (params) {
-    var dialog = this;
-    dialog.sendMessage($.verto.enum.message.info, params);
+
   };
   $.verto.dialog.prototype.handleDisplay = function (params) {
-    var dialog = this;
-    if (params.display_name) {
-      dialog.params.remote_caller_id_name = params.display_name;
-    }
-    if (params.display_number) {
-      dialog.params.remote_caller_id_number = params.display_number;
-    }
-    dialog.sendMessage($.verto.enum.message.display, {});
+
   };
   $.verto.dialog.prototype.handleMedia = function (params) {
     var dialog = this;
