@@ -22,18 +22,6 @@
     this.constraints = { offerToReceiveAudio: this.options.useSpeak === "none" ? false : true, offerToReceiveVideo: this.options.useVideo ? true : false };
   };
 
-  function onICESDP(self, sdp) {
-    self.mediaData.SDP = sdp.sdp;
-    self.options.callbacks["onICESDP"](self);
-  }
-
-  function onRemoteStream(self, stream) {
-    var element = self.options.useAudio;
-    if (typeof element.srcObject !== "undefined") {
-      element.srcObject = stream;
-    }
-  }
-
   $.FSRTC.prototype.answer = function (sdp) {
     this.peer.addAnswerSDP({ type: "answer", sdp: sdp });
   };
@@ -58,9 +46,15 @@
       self.peer = FSRTCPeerConnection({
         type: self.type,
         attachStream: self.localStream,
-        onRemoteStream: (stream) => onRemoteStream(self, stream),
+        onRemoteStream: (stream) => {
+          var element = self.options.useAudio;
+          if (typeof element.srcObject !== "undefined") {
+            element.srcObject = stream;
+          }
+        },
         onICESDP: function (sdp) {
-          return onICESDP(self, sdp);
+          self.mediaData.SDP = sdp.sdp;
+          self.options.callbacks["onICESDP"](self);
         },
         constraints: self.constraints,
         iceServers: self.options.iceServers,
@@ -75,7 +69,6 @@
 
   function FSRTCPeerConnection(options) {
     var gathering = false;
-
     var peer = new window.RTCPeerConnection({
       bundlePolicy: "max-compat",
     });
